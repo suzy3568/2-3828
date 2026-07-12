@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODCSRUN — Order</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f2f2f2;
+    color: #111;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100vh;
+    padding: 0 0 60px 0;
+  }
+
+  .header {
+    text-align: center;
+    padding: 32px 24px 20px;
+    background: #1B3A8C;
+    color: white;
+  }
+  .header-logo { font-size: 11px; letter-spacing: 4px; font-weight: 700; opacity: 0.7; margin-bottom: 6px; }
+  .header-title { font-size: 30px; font-weight: 900; line-height: 1; }
+  .header-sub { font-size: 11px; letter-spacing: 3px; font-weight: 500; opacity: 0.6; margin-top: 6px; }
+
+  .steps {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    padding: 16px 24px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .step { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: #bbb; }
+  .step.active { color: #1B3A8C; }
+  .step.done { color: #888; }
+  .step-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid currentColor;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 900; flex-shrink: 0;
+  }
+  .step.active .step-dot { background: #1B3A8C; color: white; border-color: #1B3A8C; }
+  .step.done .step-dot { background: #888; color: white; border-color: #888; }
+  .step-line { width: 28px; height: 1.5px; background: #ddd; margin: 0 4px; }
+
+  .section {
+    margin: 16px 16px 0;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 20px 18px;
+  }
+  .section-label { font-size: 9px; letter-spacing: 3px; font-weight: 700; color: #999; margin-bottom: 14px; text-transform: uppercase; }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 2px dashed #c0c8e8;
+    border-radius: 12px;
+    background: #f5f7ff;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .upload-zone:active, .upload-zone.drag { border-color: #1B3A8C; background: #eef1fb; }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon { font-size: 40px; margin-bottom: 10px; }
+  .upload-title { font-size: 15px; font-weight: 800; color: #1B3A8C; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: #aaa; line-height: 1.5; }
+
+  /* PREVIEW GRID */
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .preview-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    background: #f0f0f0;
+  }
+  .preview-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .preview-item .remove-btn {
+    position: absolute; top: 4px; right: 4px;
+    width: 20px; height: 20px;
+    background: rgba(0,0,0,0.55);
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border: none;
+  }
+  .add-more {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: #bbb; cursor: pointer;
+    position: relative; background: #fafafa;
+  }
+  .add-more input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+  /* NOTE field under upload */
+  .note-row { margin-top: 14px; }
+  .note-row textarea {
+    width: 100%;
+    background: #fafafa;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    color: #111;
+    font-size: 13px;
+    padding: 11px 13px;
+    font-family: inherit;
+    outline: none;
+    resize: none;
+    min-height: 72px;
+    transition: border-color 0.15s;
+  }
+  .note-row textarea:focus { border-color: #1B3A8C; }
+  .note-row textarea::placeholder { color: #bbb; }
+  .note-label { font-size: 10px; letter-spacing: 2px; font-weight: 700; color: #999; margin-bottom: 6px; display: block; }
+
+  /* FORM FIELDS */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 10px; letter-spacing: 2px; font-weight: 700; color: #999; margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: #fafafa; border: 1.5px solid #e0e0e0;
+    border-radius: 8px; color: #111; font-size: 14px; padding: 12px 14px;
+    font-family: inherit; outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  .field input::placeholder, .field textarea::placeholder { color: #bbb; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: #1B3A8C; }
+  .field select option { background: white; color: #111; }
+  .field textarea { resize: none; min-height: 80px; }
+  .hint { font-size: 10px; color: #bbb; margin-top: 4px; line-height: 1.5; }
+
+  /* SUMMARY */
+  .summary-img-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  .summary-img-row img {
+    width: 64px; height: 64px; object-fit: cover;
+    border-radius: 8px; border: 1px solid #eee;
+  }
+  .summary-note {
+    font-size: 13px; color: #555; background: #f8f8f8;
+    border-radius: 8px; padding: 10px 12px; line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; color: #333;
+  }
+  .summary-row:last-of-type { border-bottom: none; }
+  .summary-key { color: #777; }
+  .summary-val { font-weight: 700; color: #111; }
+
+  /* PAY */
+  .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pay-card {
+    border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 12px 10px;
+    cursor: pointer; transition: all 0.15s; text-align: center; background: #fafafa;
+  }
+  .pay-card.selected { border-color: #1B3A8C; background: #eef1fb; }
+  .pay-icon { font-size: 22px; margin-bottom: 4px; }
+  .pay-name { font-size: 11px; font-weight: 700; color: #111; }
+  .pay-desc { font-size: 9px; color: #aaa; margin-top: 2px; }
+
+  .cta-wrap { padding: 20px 16px 0; }
+  .cta-btn {
+    width: 100%; background: #1B3A8C; color: white; border: none;
+    border-radius: 12px; padding: 17px; font-size: 14px; font-weight: 900;
+    letter-spacing: 2px; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+  }
+  .cta-btn:active { opacity: 0.85; transform: scale(0.98); }
+  .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .back-link { text-align: center; margin-top: 14px; font-size: 12px; color: #aaa; cursor: pointer; letter-spacing: 1px; }
+
+  .notice {
+    margin: 14px 16px 0; padding: 12px 14px;
+    background: #f8f8f8; border: 1px solid #e8e8e8;
+    border-radius: 8px; font-size: 11px; line-height: 1.7; color: #888; text-align: center;
+  }
+
+  /* SUCCESS */
+  .success-screen { display: none; text-align: center; padding: 60px 24px; }
+  .success-screen.show { display: block; }
+  .success-icon { font-size: 56px; margin-bottom: 16px; }
+  .success-title { font-size: 24px; font-weight: 900; color: #111; margin-bottom: 8px; }
+  .success-sub { font-size: 13px; color: #777; line-height: 1.7; }
+  .order-id {
+    display: inline-block; margin-top: 20px;
+    border: 1.5px dashed #ccc; border-radius: 8px;
+    padding: 10px 20px; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #1B3A8C;
+  }
+  .form-screen.hide { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">★ ODCSRUN ★</div>
+  <div class="header-title">WORLDWIDE SHIPPING</div>
+  <div class="header-sub">ORDER FORM</div>
+</div>
+
+<div class="steps">
+  <div class="step active" id="s1"><div class="step-dot">1</div><span>SCREENSHOT</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="s2"><div class="step-dot">2</div><span>SHIP TO</span></div>
+  <div class="step-line"></div>
+  <div class="step" id="s3"><div class="step-dot">3</div><span>PAY</span></div>
+</div>
+
+<div class="form-screen" id="formScreen">
+
+  <!-- PAGE 1: UPLOAD -->
+  <div id="page1">
+
+    <!-- THANK YOU BANNER -->
+    <div style="margin: 16px 16px 0; background: #1B3A8C; border-radius: 12px; padding: 18px 20px; text-align: center;">
+      <div style="font-size: 22px; margin-bottom: 6px;">🙏✨</div>
+      <div style="color: white; font-size: 17px; font-weight: 900; letter-spacing: -0.3px; line-height: 1.35;">
+        Thank you so much<br>for your order!
+      </div>
+      <div style="color: rgba(255,255,255,0.65); font-size: 12px; margin-top: 6px; line-height: 1.5;">
+        It truly means the world to us 🏃‍♂️💙
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Upload your screenshot(s)</div>
+
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" accept="image/*" multiple id="fileInput" onchange="handleFiles(this.files)">
+        <div class="upload-icon">📸</div>
+        <div class="upload-title">Drop your screenshots here</div>
+        <div class="upload-sub">Screenshot the items you want<br>and upload them here — we'll handle the rest</div>
+      </div>
+
+      <div class="preview-grid" id="previewGrid" style="display:none"></div>
+
+      <div class="note-row" style="margin-top:16px;">
+        <span class="note-label">TELL US WHAT YOU WANT</span>
+        <textarea id="orderNote" placeholder="e.g. &quot;Black tee size M × 2, blue cap × 1&quot; — or just describe what's in the screenshots"></textarea>
+      </div>
+    </div>
+
+    <div class="cta-wrap">
+      <button class="cta-btn" id="nextBtn1" onclick="goStep(2)" disabled>NEXT — SHIPPING →</button>
+    </div>
+    <div class="notice">
+      💬 Not sure about sizes or stock? Just upload and we'll confirm via DM before charging you.
+    </div>
+
+    <!-- BRAND FOOTER -->
+    <div style="text-align: center; margin-top: 28px; padding-bottom: 8px;">
+      <div style="font-size: 10px; color: #1B3A8C; letter-spacing: 2px; font-weight: 600; opacity: 0.7;">local running store, based in seoul</div>
+      <div style="font-size: 16px; color: #1B3A8C; font-weight: 900; letter-spacing: 3px; margin-top: 3px;">ODCS RUN</div>
+    </div>
+
+  </div>
+
+  <!-- PAGE 2: SHIPPING -->
+  <div id="page2" style="display:none;">
+    <div class="section">
+      <div class="section-label">Your info</div>
+      <div class="field">
+        <label>FULL NAME</label>
+        <input type="text" id="name" placeholder="Name on parcel">
+      </div>
+      <div class="field">
+        <label>INSTAGRAM</label>
+        <input type="text" id="insta" placeholder="@yourusername">
+        <div class="hint">We'll DM you the invoice & tracking here</div>
+      </div>
+      <div class="field">
+        <label>EMAIL</label>
+        <input type="email" id="email" placeholder="your@email.com">
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Shipping address</div>
+      <div class="field">
+        <label>COUNTRY</label>
+        <select id="country">
+          <option value="">Select country…</option>
+          <option>United States</option>
+          <option>United Kingdom</option>
+          <option>France</option>
+          <option>Germany</option>
+          <option>Australia</option>
+          <option>Canada</option>
+          <option>Japan</option>
+          <option>Singapore</option>
+          <option>Thailand</option>
+          <option>Indonesia</option>
+          <option>Philippines</option>
+          <option>Malaysia</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ADDRESS LINE 1</label>
+        <input type="text" id="addr1" placeholder="Street address, apartment…">
+      </div>
+      <div class="field">
+        <label>CITY / STATE / ZIP</label>
+        <input type="text" id="addr2" placeholder="City, State, ZIP">
+      </div>
+      <div class="field">
+        <label>PHONE (for courier)</label>
+        <input type="tel" id="phone" placeholder="+1 234 567 8900">
+        <div class="hint">Required by couriers. Not shared.</div>
+      </div>
+    </div>
+    <div class="cta-wrap">
+      <button class="cta-btn" onclick="goStep(3)">NEXT — PAYMENT →</button>
+    </div>
+    <div class="back-link" onclick="goStep(1)">← BACK</div>
+  </div>
+
+  <!-- PAGE 3: PAY -->
+  <div id="page3" style="display:none;">
+    <div class="section">
+      <div class="section-label">Your order</div>
+      <div class="summary-img-row" id="summaryImgs"></div>
+      <div class="summary-note" id="summaryNote" style="display:none"></div>
+      <div class="summary-row">
+        <span class="summary-key">Shipping (worldwide)</span>
+        <span class="summary-val">TBD — confirmed via DM</span>
+      </div>
+      <div style="margin-top: 14px; background: #f0f4ff; border: 1.5px solid #c5d0f0; border-radius: 10px; padding: 14px 14px;">
+        <div style="font-size: 13px; font-weight: 800; color: #1B3A8C; margin-bottom: 6px;">📦 Heads up about stock!</div>
+        <div style="font-size: 12px; color: #444; line-height: 1.7;">
+          Our inventory changes frequently, so once we receive your screenshots, we'll check availability right away and get back to you via DM with:<br>
+          <span style="display:inline-block; margin-top:6px;">✅ Which items are in stock<br>🚚 Estimated shipping timeline<br>💰 Your final total</span>
+        </div>
+        <div style="font-size: 11px; color: #1B3A8C; font-weight: 700; margin-top: 10px;">No payment until you confirm — promise! 🤝</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-label">Payment method</div>
+
+      <!-- EXIMBAY CARD (primary) -->
+      <div id="payEximbay" class="pay-option-block selected-block" onclick="selectPayMethod('eximbay')" style="
+        border: 2px solid #1B3A8C;
+        background: #eef1fb;
+        border-radius: 12px;
+        padding: 16px;
+        cursor: pointer;
+        margin-bottom: 10px;
+        transition: all 0.15s;
+      ">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-size:26px;">💳</div>
+          <div style="flex:1;">
+            <div style="font-size:14px; font-weight:800; color:#111;">Credit / Debit Card</div>
+            <div style="font-size:11px; color:#888; margin-top:2px;">VISA · Mastercard · JCB · UnionPay · Amex</div>
+          </div>
+          <div id="checkEximbay" style="width:20px;height:20px;border-radius:50%;background:#1B3A8C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="color:white;font-size:11px;font-weight:900;">✓</span>
+          </div>
+        </div>
+        <!-- card brand icons row -->
+        <div style="display:flex; gap:6px; margin-top:12px; flex-wrap:wrap;">
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;color:#1a1f71;">VISA</div>
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;color:#eb001b;">MC</div>
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;color:#003087;">JCB</div>
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;color:#c0392b;">Union<br style="display:none">Pay</div>
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:5px;padding:3px 8px;font-size:10px;font-weight:700;color:#2e77bc;">Amex</div>
+        </div>
+        <div style="margin-top:10px; font-size:10px; color:#1B3A8C; font-weight:700; letter-spacing:0.5px;">
+          🔒 Secured by Eximbay · Safe global checkout
+        </div>
+      </div>
+
+      <!-- OTHER OPTIONS -->
+      <div style="font-size:9px;letter-spacing:2px;font-weight:700;color:#bbb;margin:14px 0 8px;">OR PAY VIA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div id="payPaypal" class="pay-option-block" onclick="selectPayMethod('paypal')" style="
+          border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 10px;
+          cursor:pointer;text-align:center;background:#fafafa;transition:all 0.15s;
+        ">
+          <div style="font-size:22px;margin-bottom:4px;">🅿️</div>
+          <div style="font-size:11px;font-weight:700;color:#111;">PayPal</div>
+          <div style="font-size:9px;color:#aaa;margin-top:2px;">Global · Instant</div>
+        </div>
+        <div id="payWise" class="pay-option-block" onclick="selectPayMethod('wise')" style="
+          border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 10px;
+          cursor:pointer;text-align:center;background:#fafafa;transition:all 0.15s;
+        ">
+          <div style="font-size:22px;margin-bottom:4px;">💸</div>
+          <div style="font-size:11px;font-weight:700;color:#111;">Wise</div>
+          <div style="font-size:9px;color:#aaa;margin-top:2px;">Low fee · Transfer</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-wrap">
+      <button class="cta-btn" id="submitBtn" onclick="submitOrder()">PAY NOW ★</button>
+    </div>
+    <div class="back-link" onclick="goStep(2)">← BACK</div>
+    <div class="notice">
+      📦 We'll review your screenshots and DM you within 24h with stock confirmation, total, and payment link.
+    </div>
+  </div>
+
+</div>
+
+<!-- SUCCESS -->
+<div class="success-screen" id="successScreen">
+  <div class="success-icon">★</div>
+  <div class="success-title">Order received!</div>
+  <div class="success-sub">
+    We'll DM you on Instagram<br>within 24 hours to confirm stock,<br>total, and payment link.<br><br>
+    <strong>Check your requests folder</strong><br>if you don't follow us yet.
+  </div>
+  <div class="order-id" id="orderId">ORDER #——</div>
+</div>
+
+<script>
+  let uploadedFiles = [];
+  let currentStep = 1;
+
+  function handleFiles(files) {
+    Array.from(files).forEach(f => {
+      if (!uploadedFiles.find(u => u.name === f.name && u.size === f.size)) {
+        uploadedFiles.push(f);
+      }
+    });
+    renderPreviews();
+  }
+
+  function renderPreviews() {
+    const grid = document.getElementById('previewGrid');
+    if (!uploadedFiles.length) { grid.style.display = 'none'; return; }
+    grid.style.display = 'grid';
+
+    grid.innerHTML = uploadedFiles.map((f, i) => {
+      const url = URL.createObjectURL(f);
+      return `<div class="preview-item">
+        <img src="${url}" alt="screenshot ${i+1}">
+        <button class="remove-btn" onclick="removeFile(${i})">×</button>
+      </div>`;
+    }).join('') + `<div class="add-more">
+      <input type="file" accept="image/*" multiple onchange="handleFiles(this.files)">
+      +
+    </div>`;
+
+    document.getElementById('nextBtn1').disabled = false;
+  }
+
+  function removeFile(i) {
+    uploadedFiles.splice(i, 1);
+    renderPreviews();
+    if (!uploadedFiles.length) document.getElementById('nextBtn1').disabled = true;
+  }
+
+  function goStep(n) {
+    if (n === 3) buildSummary();
+    document.getElementById('page' + currentStep).style.display = 'none';
+    document.getElementById('page' + n).style.display = 'block';
+    [1,2,3].forEach(i => {
+      const el = document.getElementById('s' + i);
+      el.classList.remove('active','done');
+      if (i < n) el.classList.add('done');
+      if (i === n) el.classList.add('active');
+    });
+    currentStep = n;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function buildSummary() {
+    const imgRow = document.getElementById('summaryImgs');
+    imgRow.innerHTML = uploadedFiles.map(f =>
+      `<img src="${URL.createObjectURL(f)}" alt="">`
+    ).join('');
+
+    const note = document.getElementById('orderNote').value.trim();
+    const noteEl = document.getElementById('summaryNote');
+    if (note) { noteEl.textContent = '📝 ' + note; noteEl.style.display = 'block'; }
+    else { noteEl.style.display = 'none'; }
+  }
+
+  let selectedPayMethod = 'eximbay';
+
+  function selectPayMethod(method) {
+    selectedPayMethod = method;
+    // reset all
+    ['eximbay','paypal','wise'].forEach(m => {
+      const el = document.getElementById('pay' + m.charAt(0).toUpperCase() + m.slice(1));
+      if (!el) return;
+      if (m === 'eximbay') {
+        el.style.border = '1.5px solid #e0e0e0';
+        el.style.background = '#fafafa';
+        document.getElementById('checkEximbay').style.background = '#ddd';
+      } else {
+        el.style.border = '1.5px solid #e0e0e0';
+        el.style.background = '#fafafa';
+      }
+    });
+    // highlight selected
+    const sel = document.getElementById('pay' + method.charAt(0).toUpperCase() + method.slice(1));
+    if (method === 'eximbay') {
+      sel.style.border = '2px solid #1B3A8C';
+      sel.style.background = '#eef1fb';
+      document.getElementById('checkEximbay').style.background = '#1B3A8C';
+    } else {
+      sel.style.border = '2px solid #1B3A8C';
+      sel.style.background = '#eef1fb';
+    }
+    // update button label
+    const btn = document.getElementById('submitBtn');
+    if (method === 'eximbay') btn.textContent = 'PAY NOW ★';
+    else btn.textContent = 'SEND ORDER ★';
+  }
+
+  function submitOrder() {
+    const name = document.getElementById('name').value.trim();
+    const insta = document.getElementById('insta').value.trim();
+    const country = document.getElementById('country').value;
+    const addr1 = document.getElementById('addr1').value.trim();
+    if (!name || !insta || !country || !addr1) {
+      alert('Please fill in your name, Instagram, country, and address.');
+      return;
+    }
+
+    const orderId = 'ODC-' + Date.now().toString(36).toUpperCase();
+
+    if (selectedPayMethod === 'eximbay') {
+      // ── EXIMBAY 실제 연동 시 이 부분을 교체하세요 ──
+      // 실제 사용 시: 서버에서 Eximbay 결제 파라미터 생성 후 아래 form submit
+      // 아래는 Eximbay 결제창 호출 예시 구조입니다 (테스트 모드)
+      const eximbayForm = document.createElement('form');
+      eximbayForm.method = 'POST';
+      eximbayForm.action = 'https://pgweb.eximbay.com/payment/payment.do'; // 실제 URL
+
+      const params = {
+        ver: '230',
+        mid: 'YOUR_MID_HERE',           // ← 엑심베이에서 발급받은 MID 입력
+        currency: 'KRW',
+        amt: '0',                        // ← 실제 금액 (서버에서 계산)
+        orderid: orderId,
+        returnurl: window.location.href,
+        statusurl: 'YOUR_WEBHOOK_URL',   // ← 결제 완료 알림 받을 URL
+        lang: 'EN',
+        email: document.getElementById('email')?.value || '',
+        buyer: name,
+        goodsnm: 'ODCSRUN Order',
+        // 실제 연동 시 hash 값 추가 필요 (서버사이드에서 생성)
+      };
+
+      Object.entries(params).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = v;
+        eximbayForm.appendChild(input);
+      });
+
+      // 실제 연동 전까지는 데모 처리
+      showSuccess(orderId);
+      return;
+
+      // 실제 연동 시 아래 주석 해제:
+      // document.body.appendChild(eximbayForm);
+      // eximbayForm.submit();
+    }
+
+    showSuccess(orderId);
+  }
+
+  function showSuccess(orderId) {
+    document.getElementById('orderId').textContent = 'ORDER #' + orderId;
+    document.getElementById('formScreen').classList.add('hide');
+    document.getElementById('successScreen').classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
